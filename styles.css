@@ -1,0 +1,336 @@
+:root {
+    --primary-color: #4a6bef;
+    --secondary-color: #6c7ae0;
+    --bg-color: #f8f9fa;
+    --bg-dark: #f0f2f5;
+    --text-color: #333;
+    --border-color: #ddd;
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --hover-color: #eef2ff;
+    --selected-color: #e3e8ff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+    line-height: 1.6;
+}
+
+/* アプリ全体のレイアウト */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* ヘッダー */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px 20px;
+    background-color: white;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+.directory-selector {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.current-dir {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dir-path {
+    font-weight: 500;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background-color: white;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn:hover {
+    background-color: var(--hover-color);
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.icon {
+    font-size: 16px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* メインコンテンツエリア */
+.main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 左側パネル */
+.left-panel {
+    width: 40%;
+    min-width: 300px;
+    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 右側パネル */
+.right-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ファイルツリー */
+.file-tree {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+.file-tree-header {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-dark);
+}
+
+.file-tree-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.file-tree-header p {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.file-tree-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px 0;
+}
+
+.file-tree-item {
+    margin-bottom: 2px;
+}
+
+.item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.item-header:hover {
+    background-color: var(--hover-color);
+}
+
+.expand-icon {
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.item-icon {
+    color: var(--secondary-color);
+}
+
+.item-name {
+    font-size: 0.9rem;
+}
+
+.item-children {
+    display: block;
+}
+
+.empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #888;
+    font-style: italic;
+    padding: 20px;
+}
+
+/* オプションパネル */
+.options-panel {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-dark);
+}
+
+.options-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.options-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.options-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.option-group {
+    margin-bottom: 10px;
+}
+
+.option-label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.option-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+.option-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.options-footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.run-btn {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+}
+
+.run-btn:hover:not(:disabled) {
+    background-color: var(--secondary-color);
+}
+
+/* 出力パネル */
+.output-panel {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.output-header h2 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.output-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.action-btn {
+    padding: 6px 10px;
+}
+
+.output-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    background-color: white;
+    font-family: monospace;
+}
+
+.output-text {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.9rem;
+}
+
+.error-message {
+    color: var(--error-color);
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--error-color);
+    border-radius: 4px;
+    background-color: rgba(220, 53, 69, 0.1);
+}
+
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 15px;
+    background-color: var(--success-color);
+    color: white;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.5s;
+    z-index: 1000;
+}

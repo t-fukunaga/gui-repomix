@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GUI Repomix</title>
+    <link href="styles.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <header class="header">
+            <div class="logo">
+                <h1>GUI Repomix</h1>
+            </div>
+
+            <div class="directory-selector">
+                <button id="select-dir-btn" class="btn select-dir-btn">
+                    <span class="icon">📁</span>
+                    ディレクトリを選択
+                </button>
+
+                <div id="current-dir-container" class="current-dir hidden">
+                    <span>現在のディレクトリ:</span>
+                    <span id="current-dir-path" class="dir-path"></span>
+                </div>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="left-panel">
+                <div class="file-tree">
+                    <div class="file-tree-header">
+                        <h2>ファイル・フォルダ</h2>
+                        <p>含めるファイルとフォルダを選択してください</p>
+                    </div>
+
+                    <div id="file-tree-content" class="file-tree-content">
+                        <div class="empty-state">
+                            ディレクトリを選択してください
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="right-panel">
+                <div class="options-panel">
+                    <div class="options-header">
+                        <h2>オプション</h2>
+                        <span class="icon">⚙️</span>
+                    </div>
+
+                    <div class="options-content">
+                        <div class="option-group">
+                            <label class="option-label">出力形式</label>
+                            <select id="style-select" class="option-select">
+                                <option value="plain">Plain Text</option>
+                                <option value="markdown" selected>Markdown</option>
+                                <option value="xml">XML</option>
+                            </select>
+                        </div>
+
+                        <div class="option-group">
+                            <label class="option-checkbox">
+                                <input id="remove-comments-checkbox" type="checkbox">
+                                コメントを削除
+                            </label>
+                        </div>
+
+                        <div class="option-group">
+                            <label class="option-checkbox">
+                                <input id="remove-empty-lines-checkbox" type="checkbox">
+                                空行を削除
+                            </label>
+                        </div>
+
+                        <div class="option-group">
+                            <label class="option-checkbox">
+                                <input id="copy-checkbox" type="checkbox">
+                                自動的にクリップボードにコピー
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="options-footer">
+                        <button id="run-btn" class="btn run-btn" disabled>
+                            <span class="icon">▶️</span>
+                            実行
+                        </button>
+                    </div>
+                </div>
+
+                <div class="output-panel">
+                    <div class="output-header">
+                        <h2>出力</h2>
+
+                        <div class="output-actions">
+                            <button id="copy-btn" class="btn action-btn" disabled title="クリップボードにコピー">
+                                <span class="icon">📋</span>
+                            </button>
+
+                            <button id="save-btn" class="btn action-btn" disabled title="ファイルに保存">
+                                <span class="icon">💾</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="output-content" class="output-content">
+                        <div class="empty-state">
+                            repomixを実行すると、ここに出力が表示されます
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="dist/renderer.js"></script>
+</body>
+
+</html>
