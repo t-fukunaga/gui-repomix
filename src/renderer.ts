@@ -300,6 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // repomixを実行する
+    // repomixを実行する
     runBtn.addEventListener('click', async () => {
         if (!currentDirectory) {
             showError('ディレクトリを選択してください');
@@ -309,15 +310,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const selectedFilePaths = Object.keys(selectedFiles).filter(path => selectedFiles[path] === 'file');
         const selectedDirPaths = Object.keys(selectedFiles).filter(path => selectedFiles[path] === 'directory');
 
+        // トップディレクトリが選択されているか確認
+        const hasRootDir = selectedDirPaths.includes('');
+
+        // 何も選択されておらず、トップディレクトリも選択されていない場合はエラー
         if (selectedFilePaths.length === 0 && selectedDirPaths.length === 0) {
             showError('少なくとも1つのファイルまたはフォルダを選択してください');
             return;
         }
-
-        const includePatterns = [
-            ...selectedFilePaths,
-            ...selectedDirPaths.map(dir => `${dir}/**`)
-        ].join(',');
 
         setProcessing(true);
         clearError();
@@ -325,12 +325,23 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const options: RepomixOptions = {
                 directories: [currentDirectory],
-                include: includePatterns,
                 style: styleSelect.value as "plain" | "markdown" | "xml",
                 removeComments: removeCommentsCheckbox.checked,
                 removeEmptyLines: removeEmptyLinesCheckbox.checked,
                 copy: copyCheckbox.checked
             };
+
+            // トップディレクトリが選択されていない場合のみincludeオプションを追加
+            if (!hasRootDir) {
+                const includePatterns = [
+                    ...selectedFilePaths,
+                    ...selectedDirPaths.map(dir => `${dir}/**`)
+                ].join(',');
+
+                if (includePatterns) {
+                    options.include = includePatterns;
+                }
+            }
 
             const result = await window.electron.runRepomix(options);
             outputText = result.stdout;
@@ -352,7 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
             setProcessing(false);
         }
     });
-
     // クリップボードにコピー
     copyBtn.addEventListener('click', async () => {
         if (outputText) {
