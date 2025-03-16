@@ -183,6 +183,7 @@ ipcMain.handle('copy-to-clipboard', async (_: Electron.IpcMainInvokeEvent, text:
 });
 
 // repomixのデフォルト対象ファイルを取得する
+// repomixのデフォルト対象ファイルを取得する
 ipcMain.handle('get-repomix-default-files', async (_: Electron.IpcMainInvokeEvent, dirPath: string): Promise<string[]> => {
     return new Promise((resolve, reject) => {
         // 一時的なファイル名を生成
@@ -209,25 +210,15 @@ ipcMain.handle('get-repomix-default-files', async (_: Electron.IpcMainInvokeEven
                     // ファイルの内容を読み込む
                     const content = fs.readFileSync(tempFile, 'utf8');
 
-                    // ファイルパスを抽出
+                    // パターンを正規表現で作成（完全決め打ち）
+                    // ================\nFile: ファイルパス\n================
+                    const pattern = /={16}\r?\nFile: ([^\r\n]+)\r?\n={16}/g;
                     const files: string[] = [];
-                    const lines = content.split('\n');
 
-                    let filesSection = false;
-                    let endOfFiles = false;
-
-                    for (const line of lines) {
-                        // ファイルセクションの開始を検出
-                        if (line.includes('File:') && !endOfFiles) {
-                            filesSection = true;
-                            const filePath = line.replace('File:', '').trim();
-                            files.push(filePath);
-                            continue;
-                        }
-
-                        // ファイルが見つかった後にセクション終了行を検出
-                        if (filesSection && line.includes('End of Codebase') && line.includes('=')) {
-                            endOfFiles = true;
+                    let match;
+                    while ((match = pattern.exec(content)) !== null) {
+                        if (match[1]) {
+                            files.push(match[1].trim());
                         }
                     }
 
