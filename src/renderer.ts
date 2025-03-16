@@ -1,4 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // highlight.jsの型定義
+    interface HLJSApi {
+        highlightElement: (element: HTMLElement) => void;
+        highlightAuto: (code: string) => { language: string | null };
+    }
+
+    // highlight.jsの初期化
+    if (typeof (window as any)['hljs'] !== 'undefined') {
+        console.log('highlight.jsが正常に読み込まれました');
+    } else {
+        console.warn('highlight.jsが読み込まれていません。構文ハイライトは無効になります。');
+    }
     // 要素の取得
     const selectDirBtn = document.getElementById('select-dir-btn') as HTMLButtonElement;
     const currentDirContainer = document.getElementById('current-dir-container') as HTMLDivElement;
@@ -14,6 +26,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
     const outputContent = document.getElementById('output-content') as HTMLDivElement;
 
+    // highlight.jsが利用可能かどうかをチェックする関数
+    function isHighlightJsAvailable(): boolean {
+        return typeof (window as any)['hljs'] !== 'undefined';
+    }
+
     // 状態の保持
     let currentDirectory: string | null = null;
     let selectedFiles: Record<string, 'file' | 'directory'> = {};
@@ -21,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let defaultFiles: Set<string> = new Set();
     let useDefaultFilesOnly: boolean = true;
     let currentPreviewPath: string | null = null;
+    let currentPreviewLanguage: string | null = null;
 
     // デフォルトファイルのみ表示の切り替え
     defaultFilesOnlyCheckbox.addEventListener('change', () => {
@@ -315,6 +333,171 @@ document.addEventListener('DOMContentLoaded', () => {
         return itemElement;
     }
 
+    // ファイル拡張子から言語を推測する
+    function getLanguageFromFileName(fileName: string): string | null {
+        const extensionMap: Record<string, string | null> = {
+            'js': 'javascript',
+            'ts': 'typescript',
+            'jsx': 'javascript',
+            'tsx': 'typescript',
+            'py': 'python',
+            'html': 'html',
+            'css': 'css',
+            'json': 'json',
+            'xml': 'xml',
+            'md': 'markdown',
+            'java': 'java',
+            'c': 'c',
+            'cpp': 'cpp',
+            'cc': 'cpp',
+            'h': 'cpp',
+            'hpp': 'cpp',
+            'cs': 'csharp',
+            'go': 'go',
+            'rs': 'rust',
+            'rb': 'ruby',
+            'php': 'php',
+            'sh': 'shell',
+            'bash': 'shell',
+            'zsh': 'shell',
+            'sql': 'sql',
+            'txt': null,
+        };
+
+        const extension = fileName.split('.').pop()?.toLowerCase() || '';
+        return extensionMap[extension] || null;
+    }
+
+    // 言語セレクターを生成する
+    function createLanguageSelector(currentLanguage: string | null): HTMLDivElement {
+        const languages = [
+            { value: 'auto', name: '自動検出' },
+            { value: 'plaintext', name: 'プレーンテキスト' },
+            { value: 'javascript', name: 'JavaScript' },
+            { value: 'typescript', name: 'TypeScript' },
+            { value: 'python', name: 'Python' },
+            { value: 'html', name: 'HTML' },
+            { value: 'css', name: 'CSS' },
+            { value: 'json', name: 'JSON' },
+            { value: 'xml', name: 'XML' },
+            { value: 'markdown', name: 'Markdown' },
+            { value: 'java', name: 'Java' },
+            { value: 'cpp', name: 'C/C++' },
+            { value: 'csharp', name: 'C#' },
+            { value: 'go', name: 'Go' },
+            { value: 'rust', name: 'Rust' },
+            { value: 'shell', name: 'Shell' },
+            { value: 'sql', name: 'SQL' },
+        ];
+
+        const container = document.createElement('div');
+        container.className = 'language-selector';
+
+        const label = document.createElement('label');
+        label.textContent = '言語: ';
+        container.appendChild(label);
+
+        const select = document.createElement('select');
+        select.id = 'language-select';
+
+        languages.forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang.value;
+            option.textContent = lang.name;
+
+            // 現在の言語を選択
+            if (currentLanguage === lang.value ||
+                (currentLanguage === null && lang.value === 'auto')) {
+                option.selected = true;
+            }
+
+            select.appendChild(option);
+        });
+
+        // 言語選択時のイベント
+        select.addEventListener('change', () => {
+            const selectedValue = select.value;
+            if (currentPreviewPath) {
+                applyHighlight(selectedValue === 'auto' ? null : selectedValue);
+            }
+        });
+
+        container.appendChild(select);
+        return container;
+    }
+
+    // 構文ハイライトを適用する
+    function applyHighlight(language: string | null): void {
+        if (!currentPreviewPath) return;
+
+        const previewContent = document.querySelector('.preview-content') as HTMLElement;
+        if (!previewContent) return;
+
+        const content = previewContent.textContent || '';
+
+        // highlight.jsが使用可能かどうかチェック
+        if (!isHighlightJsAvailable()) {
+            console.warn('highlight.jsが読み込まれていません。構文ハイライトは適用されません。');
+            previewContent.textContent = content;
+            return;
+        }
+
+        try {
+            // コードコンテナの作成
+            const codeElement = document.createElement('code');
+
+            // 言語クラスの設定
+            if (language) {
+                codeElement.className = `language-${language}`;
+                currentPreviewLanguage = language;
+            } else {
+                // 自動検出の場合
+                const hljs = (window as any)['hljs'] as HLJSApi;
+                const result = hljs.highlightAuto(content);
+                currentPreviewLanguage = result.language || 'plaintext';
+                codeElement.className = `language-${currentPreviewLanguage}`;
+            }
+
+            codeElement.textContent = content;
+
+            // プレビューコンテンツを更新
+            previewContent.innerHTML = '';
+            previewContent.appendChild(codeElement);
+
+            // ハイライト適用
+            const hljs = (window as any)['hljs'] as HLJSApi;
+            hljs.highlightElement(codeElement);
+
+            // 言語セレクタを更新
+            updateLanguageSelector();
+        } catch (err) {
+            console.error('構文ハイライト適用中にエラーが発生しました:', err);
+            previewContent.textContent = content; // エラー時には通常のテキスト表示に戻す
+        }
+    }
+
+    // 言語セレクタを更新する
+    function updateLanguageSelector(): void {
+        // highlight.jsが使用できない場合はセレクタを表示しない
+        if (!isHighlightJsAvailable()) return;
+
+        const existingSelector = document.querySelector('.language-selector');
+        if (existingSelector) {
+            existingSelector.remove();
+        }
+
+        const selector = createLanguageSelector(currentPreviewLanguage);
+        const previewHeader = document.querySelector('.preview-header');
+        if (previewHeader) {
+            const closeBtn = previewHeader.querySelector('.preview-close-btn');
+            if (closeBtn) {
+                previewHeader.insertBefore(selector, closeBtn);
+            } else {
+                previewHeader.appendChild(selector);
+            }
+        }
+    }
+
     // ファイルをプレビュー表示
     async function previewFile(path: string, fileName: string): Promise<void> {
         if (!currentDirectory) return;
@@ -328,6 +511,9 @@ document.addEventListener('DOMContentLoaded', () => {
             outputContent.classList.add('preview-mode');
             currentPreviewPath = path;
 
+            // ファイル名から言語を推測
+            currentPreviewLanguage = getLanguageFromFileName(fileName);
+
             // ファイルの内容を取得
             const content = await window.electron.readFileContent(path);
 
@@ -340,21 +526,66 @@ document.addEventListener('DOMContentLoaded', () => {
             previewTitle.textContent = `プレビュー: ${fileName}`;
             previewHeader.appendChild(previewTitle);
 
+            // 言語セレクタの追加
+            const languageSelector = createLanguageSelector(currentPreviewLanguage);
+            previewHeader.appendChild(languageSelector);
+
             const closeBtn = document.createElement('button');
             closeBtn.className = 'preview-close-btn';
             closeBtn.textContent = '×';
             closeBtn.addEventListener('click', clearPreview);
             previewHeader.appendChild(closeBtn);
 
+            // プレビューコンテナの作成
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'preview-container';
+
             // プレビュー内容を作成
             const previewContent = document.createElement('pre');
             previewContent.className = 'preview-content';
-            previewContent.textContent = content;
 
-            // 出力エリアに表示
-            outputContent.innerHTML = '';
-            outputContent.appendChild(previewHeader);
-            outputContent.appendChild(previewContent);
+            // highlight.jsが利用可能かチェック
+            if (isHighlightJsAvailable()) {
+                try {
+                    // コード要素の作成
+                    const codeElement = document.createElement('code');
+
+                    // 言語クラスの設定（推測した言語または自動検出）
+                    if (currentPreviewLanguage) {
+                        codeElement.className = `language-${currentPreviewLanguage}`;
+                    }
+
+                    codeElement.textContent = content;
+                    previewContent.appendChild(codeElement);
+                    previewContainer.appendChild(previewContent);
+
+                    // 出力エリアに表示
+                    outputContent.innerHTML = '';
+                    outputContent.appendChild(previewHeader);
+                    outputContent.appendChild(previewContainer);
+
+                    // 構文ハイライト適用
+                    const hljs = (window as any)['hljs'] as HLJSApi;
+                    hljs.highlightElement(codeElement);
+                } catch (err) {
+                    console.error('構文ハイライト適用中にエラーが発生しました:', err);
+                    // エラーが発生した場合は通常のテキスト表示にフォールバック
+                    previewContent.textContent = content;
+                    previewContainer.appendChild(previewContent);
+
+                    outputContent.innerHTML = '';
+                    outputContent.appendChild(previewHeader);
+                    outputContent.appendChild(previewContainer);
+                }
+            } else {
+                // highlight.jsが利用できない場合は通常のテキスト表示
+                previewContent.textContent = content;
+                previewContainer.appendChild(previewContent);
+
+                outputContent.innerHTML = '';
+                outputContent.appendChild(previewHeader);
+                outputContent.appendChild(previewContainer);
+            }
 
             // ボタンを無効化
             copyBtn.disabled = true;
@@ -370,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentPreviewPath) {
             outputContent.classList.remove('preview-mode');
             currentPreviewPath = null;
+            currentPreviewLanguage = null;
 
             // デフォルトの空の状態に戻す
             outputContent.innerHTML = '<div class="empty-state">repomixを実行すると、ここに出力が表示されます</div>';
@@ -435,7 +667,34 @@ document.addEventListener('DOMContentLoaded', () => {
             outputContent.innerHTML = '';
             const pre = document.createElement('pre');
             pre.className = 'output-text';
-            pre.textContent = outputText;
+
+            // repomixの出力も構文ハイライト対応（XMLやMarkdownの場合）
+            if (isHighlightJsAvailable() && (styleSelect.value === 'xml' || styleSelect.value === 'markdown')) {
+                try {
+                    const code = document.createElement('code');
+                    code.className = styleSelect.value === 'xml' ? 'language-xml' : 'language-markdown';
+                    code.textContent = outputText;
+                    pre.appendChild(code);
+
+                    // 非同期で適用（DOMに追加後）
+                    setTimeout(() => {
+                        try {
+                            const hljs = (window as any)['hljs'] as HLJSApi;
+                            hljs.highlightElement(code);
+                        } catch (err) {
+                            console.error('repomix出力のハイライト適用中にエラーが発生しました:', err);
+                            // エラー時はフォールバック
+                            pre.textContent = outputText;
+                        }
+                    }, 0);
+                } catch (err) {
+                    console.error('repomix出力のハイライト設定中にエラーが発生しました:', err);
+                    pre.textContent = outputText;
+                }
+            } else {
+                pre.textContent = outputText;
+            }
+
             outputContent.appendChild(pre);
 
             // ボタンを有効化
@@ -506,5 +765,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 notification.remove();
             }, 500);
         }, 2000);
+    }
+
+    // ファイル名から適切なhighlight.js言語識別子を取得
+    function getLanguageIdentifier(fileName: string): string {
+        const ext = fileName.split('.').pop()?.toLowerCase();
+        const languageMap: Record<string, string> = {
+            'js': 'javascript',
+            'ts': 'typescript',
+            'py': 'python',
+            'html': 'html',
+            'css': 'css',
+            'json': 'json',
+            'xml': 'xml',
+            'md': 'markdown',
+            'java': 'java',
+            'c': 'c',
+            'cpp': 'cpp',
+            'cs': 'csharp',
+            'go': 'go',
+            'rs': 'rust',
+            'sh': 'shell',
+            'bash': 'shell',
+            'sql': 'sql'
+        };
+
+        return ext && languageMap[ext] ? languageMap[ext] : 'plaintext';
     }
 });
