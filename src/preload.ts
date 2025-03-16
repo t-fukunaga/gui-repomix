@@ -19,7 +19,11 @@ contextBridge.exposeInMainWorld('electron', {
 
     // クリップボードへのコピー
     copyToClipboard: (text: string): Promise<boolean> =>
-        ipcRenderer.invoke('copy-to-clipboard', text)
+        ipcRenderer.invoke('copy-to-clipboard', text),
+
+    // repomixのデフォルト対象ファイルを取得
+    getRepomixDefaultFiles: (dirPath: string): Promise<string[]> =>
+        ipcRenderer.invoke('get-repomix-default-files', dirPath)
 });
 
 // このファイルで型を使用するための型定義

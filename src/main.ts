@@ -181,3 +181,72 @@ ipcMain.handle('copy-to-clipboard', async (_: Electron.IpcMainInvokeEvent, text:
     clipboard.writeText(text);
     return true;
 });
+
+// repomixのデフォルト対象ファイルを取得する
+ipcMain.handle('get-repomix-default-files', async (_: Electron.IpcMainInvokeEvent, dirPath: string): Promise<string[]> => {
+    return new Promise((resolve, reject) => {
+        // 一時的なファイル名を生成
+        const tempFile = path.join(app.getPath('temp'), `repomix-temp-${Date.now()}.txt`);
+
+        // 標準出力をファイルにリダイレクトし、デフォルト設定でrepomixを実行
+        const command = `repomix "${dirPath}" -o "${tempFile}" --parsable-style`;
+
+        console.log('Getting default files with command:', command);
+
+        exec(command, { maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+            try {
+                // コマンドが正常に実行されたか確認
+                if (error) {
+                    console.error('Command execution error:', error);
+                    console.error('stderr:', stderr);
+                    // エラーでも続行できるように空配列を返す
+                    resolve([]);
+                    return;
+                }
+
+                // 一時ファイルが存在するか確認
+                if (fs.existsSync(tempFile)) {
+                    // ファイルの内容を読み込む
+                    const content = fs.readFileSync(tempFile, 'utf8');
+
+                    // ファイルパスを抽出
+                    const files: string[] = [];
+                    const lines = content.split('\n');
+
+                    let filesSection = false;
+                    let endOfFiles = false;
+
+                    for (const line of lines) {
+                        // ファイルセクションの開始を検出
+                        if (line.includes('File:') && !endOfFiles) {
+                            filesSection = true;
+                            const filePath = line.replace('File:', '').trim();
+                            files.push(filePath);
+                            continue;
+                        }
+
+                        // ファイルが見つかった後にセクション終了行を検出
+                        if (filesSection && line.includes('End of Codebase') && line.includes('=')) {
+                            endOfFiles = true;
+                        }
+                    }
+
+                    // 一時ファイルを削除
+                    try {
+                        fs.unlinkSync(tempFile);
+                    } catch (e) {
+                        console.error('Error deleting temp file:', e);
+                    }
+
+                    resolve(files);
+                } else {
+                    console.error('Temp file not found');
+                    resolve([]);
+                }
+            } catch (parseError) {
+                console.error('Error parsing repomix output:', parseError);
+                resolve([]);
+            }
+        });
+    });
+});

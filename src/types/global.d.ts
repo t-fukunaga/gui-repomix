@@ -6,6 +6,7 @@ declare global {
             runRepomix: (options: RepomixOptions) => Promise<{ stdout: string }>;
             saveFile: (content: string) => Promise<boolean>;
             copyToClipboard: (text: string) => Promise<boolean>;
+            getRepomixDefaultFiles: (dirPath: string) => Promise<string[]>;
         };
     }
 

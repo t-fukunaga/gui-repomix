@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const removeCommentsCheckbox = document.getElementById('remove-comments-checkbox') as HTMLInputElement;
     const removeEmptyLinesCheckbox = document.getElementById('remove-empty-lines-checkbox') as HTMLInputElement;
     const copyCheckbox = document.getElementById('copy-checkbox') as HTMLInputElement;
+    const defaultFilesOnlyCheckbox = document.getElementById('default-files-only-checkbox') as HTMLInputElement;
     const runBtn = document.getElementById('run-btn') as HTMLButtonElement;
     const copyBtn = document.getElementById('copy-btn') as HTMLButtonElement;
     const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
@@ -17,6 +18,16 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentDirectory: string | null = null;
     let selectedFiles: Record<string, 'file' | 'directory'> = {};
     let outputText: string = '';
+    let defaultFiles: Set<string> = new Set();
+    let useDefaultFilesOnly: boolean = true;
+
+    // デフォルトファイルのみ表示の切り替え
+    defaultFilesOnlyCheckbox.addEventListener('change', () => {
+        useDefaultFilesOnly = defaultFilesOnlyCheckbox.checked;
+        if (currentDirectory) {
+            loadDirectoryContents();
+        }
+    });
 
     // ディレクトリを選択する
     selectDirBtn.addEventListener('click', async () => {
@@ -25,6 +36,18 @@ document.addEventListener('DOMContentLoaded', () => {
             currentDirectory = dir;
             currentDirPath.textContent = dir;
             currentDirContainer.classList.remove('hidden');
+
+            // repomixのデフォルト対象ファイルを取得
+            try {
+                showNotification('デフォルトファイルを取得中...');
+                const files = await window.electron.getRepomixDefaultFiles(dir);
+                defaultFiles = new Set(files);
+                console.log('Default files:', files);
+            } catch (err) {
+                console.error('Failed to get default files:', err);
+                defaultFiles = new Set();
+            }
+
             loadDirectoryContents();
             runBtn.disabled = false;
         }
@@ -35,12 +58,89 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentDirectory) return;
 
         try {
+            // ディレクトリの内容を取得
             const contents = await window.electron.getDirectoryContents(currentDirectory);
-            renderFileTree(contents);
+
+            // デフォルトファイルのみ表示モードの場合、ファイルをフィルタリング
+            let filteredContents: DirectoryItem[] = contents;
+            if (useDefaultFilesOnly && defaultFiles.size > 0) {
+                filteredContents = filterDirectoryItems(contents);
+            }
+
+            // 親ディレクトリ（選択したディレクトリ自体）を追加
+            const dirName = currentDirectory.split(/[/\\]/).pop() || currentDirectory;
+            const rootItem: DirectoryItem = {
+                name: dirName,
+                path: '',
+                type: 'directory',
+                children: filteredContents
+            };
+
+            // ルートディレクトリとしてレンダリング
+            renderFileTree([rootItem]);
             selectedFiles = {};
+
+            // デフォルトファイルを自動選択する
+            if (defaultFiles.size > 0) {
+                autoSelectDefaultFiles();
+            }
         } catch (err) {
             showError(`ディレクトリの読み込みに失敗しました: ${err instanceof Error ? err.message : String(err)}`);
         }
+    }
+
+    // デフォルトファイルに基づいてディレクトリアイテムをフィルタリングする
+    function filterDirectoryItems(items: DirectoryItem[]): DirectoryItem[] {
+        return items.map(item => {
+            // ファイルの場合
+            if (item.type === 'file') {
+                // デフォルトファイルリストに含まれている場合のみ含める
+                return defaultFiles.has(item.path) ? item : null;
+            }
+
+            // ディレクトリの場合は子要素を再帰的にフィルタリング
+            const filteredChildren = item.children ?
+                filterDirectoryItems(item.children).filter(Boolean) as DirectoryItem[] :
+                [];
+
+            // フィルタリング後の子要素が存在する場合のみディレクトリを含める
+            if (filteredChildren.length > 0) {
+                return {
+                    ...item,
+                    children: filteredChildren
+                };
+            }
+
+            return null;
+        }).filter(Boolean) as DirectoryItem[]; // nullを除外
+    }
+
+    // デフォルトファイルを自動選択する
+    function autoSelectDefaultFiles(): void {
+        // ツリー内のすべてのチェックボックスを取得
+        const checkboxes = document.querySelectorAll('input[type="checkbox"][data-path]');
+
+        // 各チェックボックスをチェック
+        checkboxes.forEach((checkbox) => {
+            const path = (checkbox as HTMLInputElement).dataset.path || '';
+            const type = (checkbox as HTMLInputElement).dataset.type as 'file' | 'directory';
+
+            // ファイルの場合、デフォルトファイルリストに含まれていればチェックを入れる
+            if (type === 'file' && defaultFiles.has(path)) {
+                (checkbox as HTMLInputElement).checked = true;
+                selectedFiles[path] = type;
+            }
+            // ディレクトリの場合、デフォルトファイル機能がオンで、そのディレクトリ内にデフォルトファイルが含まれていればチェックを入れる
+            else if (type === 'directory' && useDefaultFilesOnly) {
+                const hasDefaultFile = Array.from(defaultFiles).some(file =>
+                    file.startsWith(path + '/') || (path === '' && defaultFiles.size > 0));
+
+                if (hasDefaultFile) {
+                    (checkbox as HTMLInputElement).checked = true;
+                    selectedFiles[path] = type;
+                }
+            }
+        });
     }
 
     // ファイルツリーをレンダリングする
@@ -61,6 +161,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         fileTreeContent.appendChild(tree);
+
+        // ルートフォルダを自動で展開
+        const rootExpandIcon = tree.querySelector('.expand-icon') as HTMLSpanElement;
+        if (rootExpandIcon) {
+            // すでに展開されている場合は何もしない
+            if (rootExpandIcon.dataset.expanded === 'false') {
+                rootExpandIcon.click();
+            }
+        }
     }
 
     // ツリーアイテムを作成する
@@ -73,6 +182,25 @@ document.addEventListener('DOMContentLoaded', () => {
         header.style.paddingLeft = `${level * 20}px`;
 
         const isDirectory = item.type === 'directory';
+
+        // デフォルトファイルかどうかの判定
+        let isDefaultFile = false;
+        let containsDefaultFiles = false;
+
+        if (item.type === 'file') {
+            isDefaultFile = defaultFiles.has(item.path);
+            if (isDefaultFile) {
+                header.classList.add('default-file');
+            }
+        } else if (isDirectory) {
+            // このディレクトリ内に1つでもデフォルトファイルがあるか確認
+            containsDefaultFiles = Array.from(defaultFiles).some(file =>
+                file.startsWith(item.path + '/') || (item.path === '' && defaultFiles.size > 0));
+
+            if (containsDefaultFiles) {
+                header.classList.add('contains-default-files');
+            }
+        }
 
         // 展開アイコン（ディレクトリの場合）
         if (isDirectory) {
@@ -116,10 +244,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // チェックボックスの変更イベント
         checkbox.addEventListener('change', () => {
-            if (checkbox.checked) {
+            const isChecked = checkbox.checked;
+
+            // 現在のアイテムの選択状態を更新
+            if (isChecked) {
                 selectedFiles[item.path] = item.type;
             } else {
                 delete selectedFiles[item.path];
+            }
+
+            // ディレクトリの場合、子要素の選択状態も更新
+            if (isDirectory) {
+                // すべての子チェックボックスを選択/非選択にする
+                const childCheckboxes = itemElement.querySelectorAll('.item-children input[type="checkbox"]');
+                Array.from(childCheckboxes).forEach((childCheckbox) => {
+                    (childCheckbox as HTMLInputElement).checked = isChecked;
+
+                    // selectedFiles オブジェクトも更新
+                    const childPath = (childCheckbox as HTMLInputElement).dataset.path || '';
+                    const childType = (childCheckbox as HTMLInputElement).dataset.type as 'file' | 'directory';
+
+                    if (isChecked) {
+                        selectedFiles[childPath] = childType;
+                    } else {
+                        delete selectedFiles[childPath];
+                    }
+                });
+
+                // 下位ディレクトリを展開して選択項目を見えるようにする
+                if (isChecked) {
+                    const expandIcon = header.querySelector('.expand-icon') as HTMLSpanElement;
+                    if (expandIcon && expandIcon.dataset.expanded === 'false') {
+                        expandIcon.click(); // 子ディレクトリを展開
+                    }
+                }
             }
         });
 
