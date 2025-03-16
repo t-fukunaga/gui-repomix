@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let outputText: string = '';
     let defaultFiles: Set<string> = new Set();
     let useDefaultFilesOnly: boolean = true;
+    let currentPreviewPath: string | null = null;
 
     // デフォルトファイルのみ表示の切り替え
     defaultFilesOnlyCheckbox.addEventListener('change', () => {
@@ -281,6 +282,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // ファイルクリックでプレビュー表示
+        if (item.type === 'file') {
+            header.addEventListener('click', async (e) => {
+                // チェックボックスをクリックした場合はプレビューしない
+                if ((e.target as HTMLElement).tagName === 'INPUT') {
+                    return;
+                }
+
+                e.stopPropagation();
+                await previewFile(item.path, item.name);
+            });
+            // ホバーエフェクト
+            header.classList.add('file-clickable');
+        }
+
         itemElement.appendChild(header);
 
         // 子要素（ディレクトリの場合）
@@ -299,12 +315,81 @@ document.addEventListener('DOMContentLoaded', () => {
         return itemElement;
     }
 
-    // repomixを実行する
+    // ファイルをプレビュー表示
+    async function previewFile(path: string, fileName: string): Promise<void> {
+        if (!currentDirectory) return;
+
+        try {
+            // アウトプットエリアをクリア
+            clearError();
+            outputContent.innerHTML = '<div class="loading">ファイルを読み込み中...</div>';
+
+            // プレビューモードに切り替え
+            outputContent.classList.add('preview-mode');
+            currentPreviewPath = path;
+
+            // ファイルの内容を取得
+            const content = await window.electron.readFileContent(path);
+
+            // プレビューヘッダーを作成
+            const previewHeader = document.createElement('div');
+            previewHeader.className = 'preview-header';
+
+            const previewTitle = document.createElement('div');
+            previewTitle.className = 'preview-title';
+            previewTitle.textContent = `プレビュー: ${fileName}`;
+            previewHeader.appendChild(previewTitle);
+
+            const closeBtn = document.createElement('button');
+            closeBtn.className = 'preview-close-btn';
+            closeBtn.textContent = '×';
+            closeBtn.addEventListener('click', clearPreview);
+            previewHeader.appendChild(closeBtn);
+
+            // プレビュー内容を作成
+            const previewContent = document.createElement('pre');
+            previewContent.className = 'preview-content';
+            previewContent.textContent = content;
+
+            // 出力エリアに表示
+            outputContent.innerHTML = '';
+            outputContent.appendChild(previewHeader);
+            outputContent.appendChild(previewContent);
+
+            // ボタンを無効化
+            copyBtn.disabled = true;
+            saveBtn.disabled = true;
+
+        } catch (err) {
+            showError(`ファイルの読み込みに失敗しました: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    }
+
+    // プレビューをクリアする
+    function clearPreview(): void {
+        if (currentPreviewPath) {
+            outputContent.classList.remove('preview-mode');
+            currentPreviewPath = null;
+
+            // デフォルトの空の状態に戻す
+            outputContent.innerHTML = '<div class="empty-state">repomixを実行すると、ここに出力が表示されます</div>';
+
+            // ボタンの状態を更新
+            copyBtn.disabled = true;
+            saveBtn.disabled = true;
+        }
+    }
+
     // repomixを実行する
     runBtn.addEventListener('click', async () => {
         if (!currentDirectory) {
             showError('ディレクトリを選択してください');
             return;
+        }
+
+        // プレビューモードを解除
+        if (currentPreviewPath) {
+            clearPreview();
         }
 
         const selectedFilePaths = Object.keys(selectedFiles).filter(path => selectedFiles[path] === 'file');
@@ -363,6 +448,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setProcessing(false);
         }
     });
+
     // クリップボードにコピー
     copyBtn.addEventListener('click', async () => {
         if (outputText) {

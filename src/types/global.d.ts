@@ -7,6 +7,7 @@ declare global {
             saveFile: (content: string) => Promise<boolean>;
             copyToClipboard: (text: string) => Promise<boolean>;
             getRepomixDefaultFiles: (dirPath: string) => Promise<string[]>;
+            readFileContent: (filePath: string) => Promise<string>;
         };
     }
 

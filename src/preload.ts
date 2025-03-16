@@ -23,7 +23,11 @@ contextBridge.exposeInMainWorld('electron', {
 
     // repomixのデフォルト対象ファイルを取得
     getRepomixDefaultFiles: (dirPath: string): Promise<string[]> =>
-        ipcRenderer.invoke('get-repomix-default-files', dirPath)
+        ipcRenderer.invoke('get-repomix-default-files', dirPath),
+
+    // ファイル内容を読み取る
+    readFileContent: (filePath: string): Promise<string> =>
+        ipcRenderer.invoke('read-file-content', filePath)
 });
 
 // このファイルで型を使用するための型定義

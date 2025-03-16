@@ -110,6 +110,61 @@ ipcMain.handle('get-directory-contents', async (_: Electron.IpcMainInvokeEvent, 
     }
 });
 
+// ファイルの内容を読み取る
+ipcMain.handle('read-file-content', async (_: Electron.IpcMainInvokeEvent, filePath: string): Promise<string> => {
+    try {
+        // 相対パスを絶対パスに変換
+        const absolutePath = path.isAbsolute(filePath) ? filePath : path.join(currentDirectory || '', filePath);
+
+        // ファイルサイズのチェック（大きすぎるファイルは読み込みを制限）
+        const stats = fs.statSync(absolutePath);
+        const maxSize = 5 * 1024 * 1024; // 5MB
+
+        if (stats.size > maxSize) {
+            return `ファイルサイズが大きすぎます (${(stats.size / 1024 / 1024).toFixed(2)} MB)。プレビューできるのは最大 ${maxSize / 1024 / 1024} MB までです。`;
+        }
+
+        // バイナリファイルのチェック
+        const isBinary = isBinaryFile(absolutePath);
+        if (isBinary) {
+            return `バイナリファイルはプレビューできません: ${path.basename(filePath)}`;
+        }
+
+        // ファイルを読み込む
+        const content = fs.readFileSync(absolutePath, 'utf8');
+        return content;
+    } catch (error) {
+        console.error(`Error reading file ${filePath}:`, error);
+        return `ファイルの読み込みに失敗しました: ${error instanceof Error ? error.message : String(error)}`;
+    }
+});
+
+// バイナリファイルかどうかを簡易チェック
+function isBinaryFile(filePath: string): boolean {
+    try {
+        // ファイルの先頭8KBを読み込む
+        const buffer = Buffer.alloc(8192);
+        const fd = fs.openSync(filePath, 'r');
+        const bytesRead = fs.readSync(fd, buffer, 0, 8192, 0);
+        fs.closeSync(fd);
+
+        // NULバイトがあればバイナリと判断
+        for (let i = 0; i < bytesRead; i++) {
+            if (buffer[i] === 0) {
+                return true;
+            }
+        }
+
+        return false;
+    } catch (error) {
+        console.error('Error checking if file is binary:', error);
+        return false;
+    }
+}
+
+// currentDirectoryをグローバル変数として定義
+let currentDirectory: string | null = null;
+
 interface RepomixOptions {
     directories: string[];
     include?: string;
@@ -125,6 +180,11 @@ interface RepomixOptions {
 
 // repomixコマンドを実行する
 ipcMain.handle('run-repomix', async (_: Electron.IpcMainInvokeEvent, options: RepomixOptions): Promise<{ stdout: string }> => {
+    // currentDirectoryを更新
+    if (options.directories && options.directories.length > 0) {
+        currentDirectory = options.directories[0];
+    }
+
     return new Promise((resolve, reject) => {
         let command = 'repomix';
 
@@ -183,8 +243,10 @@ ipcMain.handle('copy-to-clipboard', async (_: Electron.IpcMainInvokeEvent, text:
 });
 
 // repomixのデフォルト対象ファイルを取得する
-// repomixのデフォルト対象ファイルを取得する
 ipcMain.handle('get-repomix-default-files', async (_: Electron.IpcMainInvokeEvent, dirPath: string): Promise<string[]> => {
+    // currentDirectoryを更新
+    currentDirectory = dirPath;
+
     return new Promise((resolve, reject) => {
         // 一時的なファイル名を生成
         const tempFile = path.join(app.getPath('temp'), `repomix-temp-${Date.now()}.txt`);

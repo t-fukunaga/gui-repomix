@@ -355,3 +355,69 @@ body {
 .contains-default-files .item-name {
     color: var(--secondary-color);
 }
+
+/* プレビュー関連のスタイル */
+.file-clickable {
+    cursor: pointer;
+}
+
+.file-clickable:hover {
+    background-color: var(--hover-color);
+}
+
+.preview-mode {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.preview-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: var(--bg-dark);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-title {
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.preview-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #666;
+    padding: 0 5px;
+}
+
+.preview-close-btn:hover {
+    color: var(--error-color);
+}
+
+.preview-content {
+    flex: 1;
+    overflow: auto;
+    padding: 15px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100px;
+    color: #666;
+    font-style: italic;
+}
+
+/* ファイルがクリックされたときのスタイル */
+.file-active {
+    background-color: var(--selected-color);
+}
